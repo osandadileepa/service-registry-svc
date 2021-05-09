@@ -18,7 +18,3 @@ that belongs to store and all should be registered in this service.
 SPRING_PROFILES_ACTIVE=prod ./gradlew bootRun
 java -jar -Dspring.profiles.active=prod final_build.jar
 ```
-
-### Repository Details ###
-
-* https://bitbucket.org/summitinnovations/pts-service-registry-svc
