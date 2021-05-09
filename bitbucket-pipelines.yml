@@ -1,0 +1,38 @@
+image: docker:20.10.2
+
+pipelines:
+  branches:
+    hotfix/docker-image-optimization:
+      - step:
+          name: Test and Build Docker Image
+          image: amazoncorretto:11-alpine-jdk
+          script:
+            - IMAGE_NAME=$BITBUCKET_REPO_SLUG
+            - ./gradlew clean build
+            - docker version
+            - docker build -t ${IMAGE_NAME} .
+            - docker save ${IMAGE_NAME} --output "${IMAGE_NAME}.tar"
+          services:
+            - docker
+          caches:
+            - docker
+          artifacts:
+            - "*.tar"
+      - step:
+          name: Deploy to Private Docker Registry
+          image: python:3.7.4-alpine3.10
+          deployment: Test
+          caches:
+            - pip
+          script:
+            - pip3 install awscli
+            - aws configure set aws_access_key_id "${AWS_ECR_NGP_ON_SITE_ACCESS_KEY_ID}"
+            - aws configure set aws_secret_access_key "${AWS_ECR_NGP_ON_SITE_SECRET}"
+            - eval $(aws ecr get-login --no-include-email --region us-east-2 | sed 's;https://;;g')
+            - IMAGE_NAME=$BITBUCKET_REPO_SLUG
+            - docker load --input "${IMAGE_NAME}.tar"
+            - IMAGE=${AWS_ECR_NGP_ON_SITE_REPO}ngp/on-site/${IMAGE_NAME}
+            - docker tag "${IMAGE_NAME}" "${IMAGE}"
+            - docker push "${IMAGE}"
+          services:
+            - docker
